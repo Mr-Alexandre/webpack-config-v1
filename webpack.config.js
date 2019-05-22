@@ -8,37 +8,41 @@ const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const fs = require('fs');
 
 // Our function that generates our html plugins
-function generateNewHtmlWebpackPlugin(path_, item, templateDir) {
+function generateNewHtmlWebpackPlugin(directory, item, templateDir) {
     const parts = item.split('.');
     const name = parts[0];
     const extension = parts[1];
 
     return new HtmlWebpackPlugin({
-        filename: `./pages/${path_}${name}.html`,
+        filename: `./pages${directory}/${name}.html`,
         template: path.resolve(__dirname, `${templateDir}/${name}.${extension}`)
     })
 }
 
-function generateHtmlPlugins (templateDir, path_) {
+function recursiveSearchFile(folderPath, folderName) {
     // Read files in template directory
-    let templateFiles = fs.readdirSync(path.resolve(__dirname, templateDir));
+    let folderContents = fs.readdirSync(path.resolve(__dirname, folderPath));
     let collectionHtmlWebpackPlugin = [];
-    templateFiles.forEach(item => {
-        let pathToFile = path.join(__dirname, templateDir, item);
+    folderContents.forEach(item => {
+        let pathToContent = path.join(__dirname, folderPath, item);
 
-        if (fs.lstatSync(pathToFile).isFile()) {
-            collectionHtmlWebpackPlugin.push(generateNewHtmlWebpackPlugin(path_, item, templateDir));
+        if (fs.lstatSync(pathToContent).isFile()) {
+            collectionHtmlWebpackPlugin.push(generateNewHtmlWebpackPlugin(folderName, item, folderPath));
         }
-        if (fs.lstatSync(pathToFile).isDirectory()) {
-            let newArr = generateHtmlPlugins('./src/pages'+'/'+item, `${item}/`);
+        if (fs.lstatSync(pathToContent).isDirectory()) {
+            let newArr = recursiveSearchFile(`${folderPath}/${item}`, `${folderName}/${item}`);
             collectionHtmlWebpackPlugin = [...collectionHtmlWebpackPlugin, ...newArr]
         }
     });
     return collectionHtmlWebpackPlugin;
 }
 
+function generateHtmlPlugins (templateDir) {
+    return recursiveSearchFile(templateDir, '');
+}
+
 // Call our function on our views directory.
-let htmlPlugins = generateHtmlPlugins('./src/pages', '');
+let htmlPlugins = generateHtmlPlugins('./src/pages');
 
 module.exports = (env, argv) => ({
     entry: './src/main.ts',
